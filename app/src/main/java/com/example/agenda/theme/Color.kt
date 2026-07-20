@@ -1,0 +1,58 @@
+package com.example.agenda.theme
+
+import androidx.compose.ui.graphics.Color
+
+// Verde Sabio & Crema (Sage Green & Cream)
+val SageGreenPrimary = Color(0xFF8F9E8B)
+val SageGreenDark = Color(0xFF6F7E6B)
+val SageGreenBackground = Color(0xFFF5F2EB)
+val SageGreenSurface = Color(0xFFFFFFFF)
+val SageGreenText = Color(0xFF2E3A2F)
+val SageGreenLightHighlight = Color(0xFFE2EDE0)
+val SageGreenActiveBorder = Color(0xFFC5D1C0)
+
+// Rubor Pastel & Oro (Pastel Blush & Gold)
+val PastelBlushPrimary = Color(0xFFD9A05B)
+val PastelBlushDark = Color(0xFFC7914E)
+val PastelBlushBackground = Color(0xFFFAF5F2)
+val PastelBlushSurface = Color(0xFFFFFFFF)
+val PastelBlushText = Color(0xFF4A3525)
+val PastelBlushLightHighlight = Color(0xFFF5D6C6)
+val PastelBlushActiveBorder = Color(0xFFEAD2C5)
+
+// Azul Marino & Rosa (Navy Blue & Pink)
+val NavyBluePrimary = Color(0xFF3B5998)
+val NavyBlueDark = Color(0xFF1F385C)
+val NavyBlueBackground = Color(0xFFF0F4F8)
+val NavyBlueSurface = Color(0xFFFFFFFF)
+val NavyBlueText = Color(0xFF101E31)
+val NavyBlueLightHighlight = Color(0xFFFADAE2)
+val NavyBlueActiveBorder = Color(0xFFCCD7E4)
+
+// Morado Elegante & Lavanda (Lavender & Amethyst)
+val LavenderPrimary = Color(0xFF8E7AB5)
+val LavenderDark = Color(0xFF6B5894)
+val LavenderBackground = Color(0xFFF7F5FA)
+val LavenderSurface = Color(0xFFFFFFFF)
+val LavenderText = Color(0xFF2A1B4A)
+val LavenderLightHighlight = Color(0xFFEADBFF)
+val LavenderActiveBorder = Color(0xFFD2C5EA)
+
+// Rosa Romance & Cerezo (Cherry Blossom & Rose)
+val RosePrimary = Color(0xFFD67B93)
+val RoseDark = Color(0xFFB55D74)
+val RoseBackground = Color(0xFFFAF5F6)
+val RoseSurface = Color(0xFFFFFFFF)
+val RoseText = Color(0xFF4A1F29)
+val RoseLightHighlight = Color(0xFFFCE1E7)
+val RoseActiveBorder = Color(0xFFEAD2D7)
+
+// Neutral Colors
+val GrayText = Color(0xFF7A7A7A)
+val LightGray = Color(0xFFE0E0E0)
+val DarkGray = Color(0xFF333333)
+val BorderColor = Color(0xFFE8E6E0)
+val UrgenciaAlta = Color(0xFFE07A5F)
+val UrgenciaMedia = Color(0xFFF2CC8F)
+val UrgenciaBaja = Color(0xFF81B29A)
+val UrgenciaCompletada = Color(0xFFDFE2DD)

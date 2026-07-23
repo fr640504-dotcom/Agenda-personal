@@ -27,6 +27,7 @@ import com.example.agenda.ui.components.*
 fun MonthlyPlannerScreen(
   state: PlannerState,
   onUpdateState: ((PlannerState) -> PlannerState) -> Unit,
+  onNavigateToTab: (String) -> Unit,
   modifier: Modifier = Modifier
 ) {
   val colors = LocalCustomColors.current
@@ -58,7 +59,18 @@ fun MonthlyPlannerScreen(
   val currentRecord = state.monthlyRecords[state.currentMonth] ?: MonthlyRecord()
   val dayEvents = currentRecord.calendarEvents
 
-  var selectedDay by remember(state.currentMonth) { mutableStateOf("") }
+  val selectedDay = remember(state.selectedDate, state.currentMonth) {
+    if (state.selectedDate.startsWith(state.currentMonth)) {
+      try {
+        val dateParts = state.selectedDate.split("-")
+        dateParts.getOrNull(2)?.toIntOrNull()?.toString() ?: ""
+      } catch (e: Exception) {
+        ""
+      }
+    } else {
+      ""
+    }
+  }
   var newEventText by remember { mutableStateOf("") }
 
   // Dynamically calculate days of the month and starting offset day of week (Monday=0)
@@ -95,13 +107,7 @@ fun MonthlyPlannerScreen(
     title = "Planificador Mensual",
     subtitle = "Calendario de actividades y metas",
     bannerPath = state.customBannerPath,
-    coverPath = state.customCoverPath,
-    onUpdateBannerPath = { path ->
-      onUpdateState { it.copy(customBannerPath = path) }
-    },
-    onUpdateCoverPath = { path ->
-      onUpdateState { it.copy(customCoverPath = path) }
-    }
+    coverPath = state.customCoverPath
   ) {
     // Month navigation header
     Row(
@@ -235,7 +241,10 @@ fun MonthlyPlannerScreen(
                         else Color(0xFFFAF9F6)
                       )
                       .clickable(enabled = dayStr.isNotEmpty()) {
-                        selectedDay = dayStr
+                        try {
+                          val newDateStr = String.format(java.util.Locale.US, "%d-%02d-%02d", currentYear, currentMonthIndex + 1, dayStr.toInt())
+                          onUpdateState { it.copy(selectedDate = newDateStr) }
+                        } catch (e: Exception) {}
                       },
                     contentAlignment = Alignment.Center
                   ) {
@@ -284,10 +293,23 @@ fun MonthlyPlannerScreen(
       // Right side: Selected Day Detail list
       PlannerCard(modifier = Modifier.weight(1f)) {
         Column(modifier = Modifier.padding(16.dp).fillMaxSize()) {
-          Text(
-            text = "EVENTOS DEL DÍA",
-            style = Typography.labelSmall.copy(color = GrayText, fontWeight = FontWeight.Bold)
-          )
+          Row(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+          ) {
+            Text(
+              text = "EVENTOS DEL DÍA",
+              style = Typography.labelSmall.copy(color = GrayText, fontWeight = FontWeight.Bold)
+            )
+            if (selectedDay.isNotEmpty()) {
+              Text(
+                text = "Ver Detalle ➔",
+                style = Typography.labelSmall.copy(color = colors.primary, fontWeight = FontWeight.Bold),
+                modifier = Modifier.clickable { onNavigateToTab("Daily") }
+              )
+            }
+          }
           Text(
             text = if (selectedDay.isNotEmpty()) "$selectedDay de $monthName, $currentYear" else "Selecciona un día",
             style = Typography.bodyMedium.copy(color = GrayText),
@@ -399,72 +421,6 @@ fun MonthlyPlannerScreen(
               }
             }
           }
-        }
-      }
-    }
-    
-    Spacer(modifier = Modifier.height(16.dp))
-    
-    // BOTTOM PANELS: 3 Progress widgets (Savings metrics resolved dynamically per Month)
-    Row(
-      modifier = Modifier.fillMaxWidth(),
-      horizontalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-      // Goal 1: General Project Progress
-      PlannerCard(modifier = Modifier.weight(1f)) {
-        Column(modifier = Modifier.padding(14.dp)) {
-          Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-            Text(text = "PROYECTO TFG", style = Typography.labelSmall.copy(color = GrayText))
-            Text(text = "${(state.monthlyGoals.goalProgress * 100).toInt()}%", fontFamily = DataFontFamily, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = LocalCustomColors.current.primary)
-          }
-          Text(text = state.monthlyGoals.goalTitle, style = Typography.bodyMedium.copy(fontWeight = FontWeight.Bold))
-          Spacer(modifier = Modifier.height(6.dp))
-          LinearProgressIndicator(
-            progress = state.monthlyGoals.goalProgress,
-            color = LocalCustomColors.current.primary,
-            trackColor = colors.activeBorder.copy(alpha = 0.2f),
-            modifier = Modifier.fillMaxWidth().height(6.dp).clip(CircleShape)
-          )
-        }
-      }
-      
-      // Goal 2: Physical Exercise Progress
-      PlannerCard(modifier = Modifier.weight(1f)) {
-        Column(modifier = Modifier.padding(14.dp)) {
-          Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-            Text(text = "ACTIVIDAD FÍSICA", style = Typography.labelSmall.copy(color = GrayText))
-            Text(text = "${(state.monthlyGoals.exerciseProgress * 100).toInt()}%", fontFamily = DataFontFamily, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = LocalCustomColors.current.primary)
-          }
-          Text(text = "20 de 30 entrenamientos", style = Typography.bodyMedium.copy(fontWeight = FontWeight.Bold))
-          Spacer(modifier = Modifier.height(6.dp))
-          LinearProgressIndicator(
-            progress = state.monthlyGoals.exerciseProgress,
-            color = LocalCustomColors.current.primary,
-            trackColor = colors.activeBorder.copy(alpha = 0.2f),
-            modifier = Modifier.fillMaxWidth().height(6.dp).clip(CircleShape)
-          )
-        }
-      }
-      
-      // Goal 3: Monthly Savings Target resolved dynamically
-      val recordSavingsGoal = currentRecord.savingsGoal
-      val recordSavingsAchieved = currentRecord.savingsAchieved
-      val savingsPercent = if (recordSavingsGoal > 0) (recordSavingsAchieved / recordSavingsGoal).coerceIn(0.0, 1.0) else 0.0
-
-      PlannerCard(modifier = Modifier.weight(1f)) {
-        Column(modifier = Modifier.padding(14.dp)) {
-          Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-            Text(text = "AHORRO MENSUAL", style = Typography.labelSmall.copy(color = GrayText))
-            Text(text = "${(savingsPercent * 100).toInt()}%", fontFamily = DataFontFamily, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = LocalCustomColors.current.primary)
-          }
-          Text(text = "$${recordSavingsAchieved.toInt()} de $${recordSavingsGoal.toInt()} meta", style = Typography.bodyMedium.copy(fontWeight = FontWeight.Bold))
-          Spacer(modifier = Modifier.height(6.dp))
-          LinearProgressIndicator(
-            progress = savingsPercent.toFloat(),
-            color = LocalCustomColors.current.primary,
-            trackColor = colors.activeBorder.copy(alpha = 0.2f),
-            modifier = Modifier.fillMaxWidth().height(6.dp).clip(CircleShape)
-          )
         }
       }
     }

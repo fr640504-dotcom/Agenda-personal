@@ -182,6 +182,64 @@ class DefaultPlannerRepository(private val context: Context) : PlannerRepository
           }
         }
 
+        // Parse date-specific maps
+        val selectedDate = data["selectedDate"] ?: getTodayDateString()
+
+        val dailyEventsMap = mutableMapOf<String, List<DailyEvent>>()
+        val devKeysStr = data["dailyEventsMap.keys"] ?: ""
+        if (devKeysStr.isNotEmpty()) {
+          val keys = devKeysStr.split(",")
+          for (d in keys) {
+            val size = data["dailyEventsMap.$d.size"]?.toIntOrNull() ?: 0
+            val eventsList = mutableListOf<DailyEvent>()
+            for (i in 0 until size) {
+              val id = data["dailyEventsMap.$d.$i.id"] ?: continue
+              val time = data["dailyEventsMap.$d.$i.time"] ?: ""
+              val titleVal = (data["dailyEventsMap.$d.$i.title"] ?: "").replace("\\n", "\n")
+              val dur = data["dailyEventsMap.$d.$i.duration"] ?: ""
+              val isComp = data["dailyEventsMap.$d.$i.isCompleted"]?.toBoolean() ?: false
+              eventsList.add(DailyEvent(id, time, titleVal, dur, isComp))
+            }
+            dailyEventsMap[d] = eventsList
+          }
+        }
+
+        val dailyNotesMap = mutableMapOf<String, String>()
+        val notesKeysStr = data["dailyNotesMap.keys"] ?: ""
+        if (notesKeysStr.isNotEmpty()) {
+          val keys = notesKeysStr.split(",")
+          for (d in keys) {
+            val noteVal = (data["dailyNotesMap.$d"] ?: "").replace("\\n", "\n")
+            dailyNotesMap[d] = noteVal
+          }
+        }
+
+        val waterGlassesMap = mutableMapOf<String, Int>()
+        val waterKeysStr = data["waterGlassesMap.keys"] ?: ""
+        if (waterKeysStr.isNotEmpty()) {
+          val keys = waterKeysStr.split(",")
+          for (d in keys) {
+            val waterVal = data["waterGlassesMap.$d"]?.toIntOrNull() ?: 0
+            waterGlassesMap[d] = waterVal
+          }
+        }
+
+        // Migration from legacy global structures
+        val migratedEventsMap = dailyEventsMap.toMutableMap()
+        if (migratedEventsMap.isEmpty() && dailyEvents.isNotEmpty()) {
+          migratedEventsMap[selectedDate] = dailyEvents
+        }
+
+        val migratedNotesMap = dailyNotesMap.toMutableMap()
+        if (migratedNotesMap.isEmpty() && notes.isNotEmpty()) {
+          migratedNotesMap[selectedDate] = notes
+        }
+
+        val migratedWaterMap = waterGlassesMap.toMutableMap()
+        if (migratedWaterMap.isEmpty() && water > 0) {
+          migratedWaterMap[selectedDate] = water
+        }
+
         state = state.copy(
           profile = UserProfile(name, email, null, language, timezone, dateFormat),
           appearance = AppearanceConfig(palette, cover),
@@ -200,7 +258,11 @@ class DefaultPlannerRepository(private val context: Context) : PlannerRepository
           habits = if (data.containsKey("habits.size")) habits else state.habits,
           dailyEvents = if (data.containsKey("dailyEvents.size")) dailyEvents else state.dailyEvents,
           moodCheckIns = if (data.containsKey("moodCheckIns.size")) moodCheckIns else state.moodCheckIns,
-          monthlyRecords = if (data.containsKey("monthlyRecords.keys")) monthlyRecords else state.monthlyRecords
+          monthlyRecords = if (data.containsKey("monthlyRecords.keys")) monthlyRecords else state.monthlyRecords,
+          selectedDate = selectedDate,
+          dailyEventsMap = migratedEventsMap,
+          dailyNotesMap = migratedNotesMap,
+          waterGlassesMap = migratedWaterMap
         )
       }
     } catch (e: Exception) {
@@ -231,6 +293,43 @@ class DefaultPlannerRepository(private val context: Context) : PlannerRepository
         builder.append("notes=").append(state.dailyNotes.replace("\n", "\\n")).append("\n")
         builder.append("customBannerPath=").append(state.customBannerPath ?: "null").append("\n")
         builder.append("customCoverPath=").append(state.customCoverPath ?: "null").append("\n")
+        builder.append("selectedDate=").append(state.selectedDate).append("\n")
+
+        // Serialize dailyEventsMap
+        val devKeys = state.dailyEventsMap.keys.joinToString(",")
+        builder.append("dailyEventsMap.keys=").append(devKeys).append("\n")
+        state.dailyEventsMap.forEach { (d, events) ->
+          builder.append("dailyEventsMap.$d.size=").append(events.size).append("\n")
+          events.forEachIndexed { i, e ->
+            builder.append("dailyEventsMap.$d.$i.id=").append(e.id).append("\n")
+            builder.append("dailyEventsMap.$d.$i.time=").append(e.time).append("\n")
+            builder.append("dailyEventsMap.$d.$i.title=").append(e.title.replace("\n", "\\n")).append("\n")
+            builder.append("dailyEventsMap.$d.$i.duration=").append(e.duration).append("\n")
+            builder.append("dailyEventsMap.$d.$i.isCompleted=").append(e.isCompleted).append("\n")
+          }
+        }
+        // Serialize dailyEvents
+        builder.append("dailyEvents.size=").append(state.dailyEvents.size).append("\n")
+        state.dailyEvents.forEachIndexed { i, e ->
+          builder.append("dailyEvents.$i.id=").append(e.id).append("\n")
+          builder.append("dailyEvents.$i.time=").append(e.time).append("\n")
+          builder.append("dailyEvents.$i.title=").append(e.title.replace("\n", "\\n")).append("\n")
+          builder.append("dailyEvents.$i.duration=").append(e.duration).append("\n")
+          builder.append("dailyEvents.$i.isCompleted=").append(e.isCompleted).append("\n")
+        }
+        // Serialize dailyNotesMap
+        val notesKeys = state.dailyNotesMap.keys.joinToString(",")
+        builder.append("dailyNotesMap.keys=").append(notesKeys).append("\n")
+        state.dailyNotesMap.forEach { (d, note) ->
+          builder.append("dailyNotesMap.$d=").append(note.replace("\n", "\\n")).append("\n")
+        }
+
+        // Serialize waterGlassesMap
+        val waterKeys = state.waterGlassesMap.keys.joinToString(",")
+        builder.append("waterGlassesMap.keys=").append(waterKeys).append("\n")
+        state.waterGlassesMap.forEach { (d, waterVal) ->
+          builder.append("waterGlassesMap.$d=").append(waterVal).append("\n")
+        }
         
         builder.append("monthlyGoals.goalTitle=").append(state.monthlyGoals.goalTitle.replace("\n", "\\n")).append("\n")
         builder.append("monthlyGoals.goalProgress=").append(state.monthlyGoals.goalProgress).append("\n")

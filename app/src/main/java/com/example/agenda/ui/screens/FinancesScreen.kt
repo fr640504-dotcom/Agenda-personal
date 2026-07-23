@@ -90,150 +90,143 @@ fun FinancesScreen(
     title = "Rastreador de Finanzas",
     subtitle = "Control de presupuesto y gastos de $monthName de $currentYear",
     bannerPath = state.customBannerPath,
-    coverPath = state.customCoverPath,
-    onUpdateBannerPath = { path ->
-      onUpdateState { it.copy(customBannerPath = path) }
-    },
-    onUpdateCoverPath = { path ->
-      onUpdateState { it.copy(customCoverPath = path) }
-    }
+    coverPath = state.customCoverPath
   ) {
-    // TOP ROW: Key Metrics
     Row(
       modifier = Modifier
         .fillMaxWidth()
-        .padding(bottom = 16.dp),
+        .weight(1f),
       horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-      // Metric 1: Presupuesto
-      PlannerCard(modifier = Modifier.weight(1f)) {
-        Column(modifier = Modifier.padding(16.dp)) {
-          Text(text = "PRESUPUESTO MENSUAL", style = Typography.labelSmall.copy(color = GrayText))
-          
-          if (isEditingBudget) {
-            Row(
-              verticalAlignment = Alignment.CenterVertically,
-              horizontalArrangement = Arrangement.spacedBy(8.dp),
-              modifier = Modifier.padding(vertical = 4.dp)
-            ) {
-              OutlinedTextField(
-                value = editedBudgetStr,
-                onValueChange = { editedBudgetStr = it },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.width(110.dp).height(46.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                  focusedBorderColor = LocalCustomColors.current.primary,
-                  unfocusedBorderColor = LocalCustomColors.current.activeBorder,
-                  focusedContainerColor = Color.White,
-                  unfocusedContainerColor = Color.White
-                ),
-                textStyle = Typography.bodyMedium.copy(fontWeight = FontWeight.Bold)
-              )
+      // LEFT COLUMN: Metrics, Budget Progress & Category Breakdown
+      Column(
+        modifier = Modifier
+          .weight(1.2f)
+          .fillMaxHeight(),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+      ) {
+        // TOP METRICS ROW
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+          // Presupuesto
+          PlannerCard(modifier = Modifier.weight(1f)) {
+            Column(modifier = Modifier.padding(16.dp)) {
+              Text(text = "PRESUPUESTO MENSUAL", style = Typography.labelSmall.copy(color = GrayText))
               
-              Box(
-                modifier = Modifier
-                  .size(36.dp)
-                  .clip(RoundedCornerShape(8.dp))
-                  .background(LocalCustomColors.current.primary)
-                  .clickable {
-                    val newBudget = editedBudgetStr.toDoubleOrNull()
-                    if (newBudget != null && newBudget > 0) {
-                      onUpdateState { currentState ->
-                        val record = currentState.monthlyRecords[currentState.currentMonth] ?: MonthlyRecord()
-                        val updatedRecord = record.copy(budget = newBudget)
-                        currentState.copy(
-                          monthlyRecords = currentState.monthlyRecords + (currentState.currentMonth to updatedRecord)
-                        )
-                      }
-                      isEditingBudget = false
-                    }
-                  },
-                contentAlignment = Alignment.Center
-              ) {
-                CustomCheckIcon(color = Color.White, modifier = Modifier.size(16.dp))
+              if (isEditingBudget) {
+                Row(
+                  verticalAlignment = Alignment.CenterVertically,
+                  horizontalArrangement = Arrangement.spacedBy(8.dp),
+                  modifier = Modifier.padding(vertical = 4.dp)
+                ) {
+                  OutlinedTextField(
+                    value = editedBudgetStr,
+                    onValueChange = { editedBudgetStr = it },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.width(110.dp).height(46.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                      focusedBorderColor = LocalCustomColors.current.primary,
+                      unfocusedBorderColor = LocalCustomColors.current.activeBorder,
+                      focusedContainerColor = Color.White,
+                      unfocusedContainerColor = Color.White
+                    ),
+                    textStyle = Typography.bodyMedium.copy(fontWeight = FontWeight.Bold)
+                  )
+                  
+                  Box(
+                    modifier = Modifier
+                      .size(36.dp)
+                      .clip(RoundedCornerShape(8.dp))
+                      .background(LocalCustomColors.current.primary)
+                      .clickable {
+                        val newBudget = editedBudgetStr.toDoubleOrNull()
+                        if (newBudget != null && newBudget > 0) {
+                          onUpdateState { currentState ->
+                            val record = currentState.monthlyRecords[currentState.currentMonth] ?: MonthlyRecord()
+                            val updatedRecord = record.copy(budget = newBudget)
+                            currentState.copy(
+                              monthlyRecords = currentState.monthlyRecords + (currentState.currentMonth to updatedRecord)
+                            )
+                          }
+                          isEditingBudget = false
+                        }
+                      },
+                    contentAlignment = Alignment.Center
+                  ) {
+                    CustomCheckIcon(color = Color.White, modifier = Modifier.size(16.dp))
+                  }
+                }
+              } else {
+                Row(
+                  verticalAlignment = Alignment.CenterVertically,
+                  horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                  Text(
+                    text = "$${budget.toInt()}",
+                    fontFamily = DataFontFamily,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = LocalCustomColors.current.text
+                  )
+                  Box(
+                    modifier = Modifier
+                      .size(24.dp)
+                      .clip(CircleShape)
+                      .background(LocalCustomColors.current.primary.copy(alpha = 0.15f))
+                      .clickable {
+                        editedBudgetStr = budget.toInt().toString()
+                        isEditingBudget = true
+                      },
+                    contentAlignment = Alignment.Center
+                  ) {
+                    Text("✏️", fontSize = 11.sp)
+                  }
+                }
               }
+              
+              Text(text = "$monthName $currentYear", style = Typography.bodyMedium.copy(color = GrayText))
             }
-          } else {
-            Row(
-              verticalAlignment = Alignment.CenterVertically,
-              horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
+          }
+
+          // Gastado
+          PlannerCard(modifier = Modifier.weight(1f)) {
+            Column(modifier = Modifier.padding(16.dp)) {
+              Text(text = "GASTADO HASTA HOY", style = Typography.labelSmall.copy(color = GrayText))
               Text(
-                text = "$${budget.toInt()}",
+                text = "$${String.format("%.2f", totalSpent)}",
                 fontFamily = DataFontFamily,
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
                 color = LocalCustomColors.current.text
               )
-              Box(
-                modifier = Modifier
-                  .size(24.dp)
-                  .clip(CircleShape)
-                  .background(LocalCustomColors.current.primary.copy(alpha = 0.15f))
-                  .clickable {
-                    editedBudgetStr = budget.toInt().toString()
-                    isEditingBudget = true
-                  },
-                contentAlignment = Alignment.Center
-              ) {
-                Text("✏️", fontSize = 11.sp)
-              }
+              Text(
+                text = "${(budgetProgress * 100).toInt()}% del presupuesto",
+                style = Typography.bodyMedium.copy(color = if (budgetProgress > 0.9) UrgenciaAlta else LocalCustomColors.current.primary)
+              )
             }
           }
-          
-          Text(text = "$monthName $currentYear", style = Typography.bodyMedium.copy(color = GrayText))
-        }
-      }
 
-      // Metric 2: Gastado
-      PlannerCard(modifier = Modifier.weight(1f)) {
-        Column(modifier = Modifier.padding(16.dp)) {
-          Text(text = "GASTADO HASTA HOY", style = Typography.labelSmall.copy(color = GrayText))
-          Text(
-            text = "$${String.format("%.2f", totalSpent)}",
-            fontFamily = DataFontFamily,
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
-            color = LocalCustomColors.current.text
-          )
-          Text(
-            text = "${(budgetProgress * 100).toInt()}% del presupuesto",
-            style = Typography.bodyMedium.copy(color = if (budgetProgress > 0.9) UrgenciaAlta else LocalCustomColors.current.primary)
-          )
+          // Disponible
+          PlannerCard(modifier = Modifier.weight(1f)) {
+            Column(modifier = Modifier.padding(16.dp)) {
+              Text(text = "DISPONIBLE", style = Typography.labelSmall.copy(color = GrayText))
+              Text(
+                text = "$${String.format("%.2f", availableAmount)}",
+                fontFamily = DataFontFamily,
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                color = if (availableAmount < 100) UrgenciaAlta else LocalCustomColors.current.darkAccent
+              )
+              Text(text = "Mes en curso", style = Typography.bodyMedium.copy(color = GrayText))
+            }
+          }
         }
-      }
 
-      // Metric 3: Disponible
-      PlannerCard(modifier = Modifier.weight(1f)) {
-        Column(modifier = Modifier.padding(16.dp)) {
-          Text(text = "DISPONIBLE", style = Typography.labelSmall.copy(color = GrayText))
-          Text(
-            text = "$${String.format("%.2f", availableAmount)}",
-            fontFamily = DataFontFamily,
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
-            color = if (availableAmount < 100) UrgenciaAlta else LocalCustomColors.current.darkAccent
-          )
-          Text(text = "Mes en curso", style = Typography.bodyMedium.copy(color = GrayText))
-        }
-      }
-    }
-
-    // MIDDLE ROW: Progress Trackers & Add Expense Form
-    Row(
-      modifier = Modifier
-        .fillMaxWidth()
-        .padding(bottom = 16.dp),
-      horizontalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-      // Progress Bars
-      Column(
-        modifier = Modifier.weight(1.3f),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-      ) {
-        // Budget Progress
-        PlannerCard {
+        // BUDGET PROGRESS CARD
+        PlannerCard(modifier = Modifier.fillMaxWidth()) {
           Column(modifier = Modifier.padding(14.dp)) {
             Text(
               text = "PROGRESO DEL PRESUPUESTO",
@@ -264,259 +257,43 @@ fun FinancesScreen(
           }
         }
 
-        // Savings Target Progress
-        PlannerCard {
-          Column(modifier = Modifier.padding(14.dp)) {
+        // CATEGORY BREAKDOWN CARD
+        PlannerCard(modifier = Modifier.fillMaxWidth().weight(1f)) {
+          Column(
+            modifier = Modifier
+              .fillMaxSize()
+              .padding(16.dp)
+          ) {
             Text(
-              text = "META DE AHORRO",
+              text = "GASTOS POR CATEGORÍA",
               style = Typography.labelSmall.copy(color = GrayText, fontWeight = FontWeight.Bold),
-              modifier = Modifier.padding(bottom = 6.dp)
-            )
-            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-              Text(
-                text = "${(savingsProgress * 100).toInt()}% de la meta mensual",
-                style = Typography.bodyMedium.copy(color = GrayText)
-              )
-              Text(
-                text = "$${savingsAchieved.toInt()} / $${savingsGoal.toInt()}",
-                fontFamily = DataFontFamily,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
-                color = LocalCustomColors.current.darkAccent
-              )
-            }
-            Spacer(modifier = Modifier.height(6.dp))
-            LinearProgressIndicator(
-              progress = savingsProgress.toFloat(),
-              color = LocalCustomColors.current.primary,
-              trackColor = LocalCustomColors.current.activeBorder.copy(alpha = 0.2f),
-              modifier = Modifier
-                .fillMaxWidth()
-                .height(8.dp)
-                .clip(CircleShape)
-            )
-          }
-        }
-      }
-
-      // Add Expense Form Card
-      PlannerCard(modifier = Modifier.weight(0.9f)) {
-        Column(modifier = Modifier.padding(14.dp)) {
-          Text(
-            text = "AÑADIR GASTO",
-            fontFamily = TitleFontFamily,
-            fontWeight = FontWeight.Bold,
-            fontSize = 14.sp,
-            color = LocalCustomColors.current.text,
-            modifier = Modifier.padding(bottom = 10.dp)
-          )
-
-          // Description input
-          PlannerTextField(
-            value = description,
-            onValueChange = { description = it },
-            placeholder = "Descripción..."
-          )
-          
-          Spacer(modifier = Modifier.height(8.dp))
-
-          // Amount input
-          Row(verticalAlignment = Alignment.CenterVertically) {
-            PlannerTextField(
-              value = amountText,
-              onValueChange = { amountText = it },
-              placeholder = "Importe ($)...",
-              keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-              modifier = Modifier.weight(1f)
+              modifier = Modifier.padding(bottom = 12.dp)
             )
             
-            Spacer(modifier = Modifier.width(8.dp))
-
-            // Category selector dropdown
-            Box {
-              Box(
-                modifier = Modifier
-                  .clip(RoundedCornerShape(12.dp))
-                  .border(1.dp, LocalCustomColors.current.activeBorder, RoundedCornerShape(12.dp))
-                  .clickable { isCategoryDropdownExpanded = true }
-                  .padding(horizontal = 12.dp, vertical = 12.dp)
-              ) {
-                Text(
-                  text = when(selectedCategory) {
-                    ExpenseCategory.ALIMENTACION -> "Alimentación"
-                    ExpenseCategory.CUIDADO_PERSONAL -> "Cuidado personal"
-                    ExpenseCategory.EDUCACION -> "Educación"
-                    ExpenseCategory.MASCOTAS -> "Mascotas"
-                    ExpenseCategory.SALIDAS -> "Salidas"
-                  },
-                  style = Typography.bodyMedium.copy(color = LocalCustomColors.current.text)
-                )
-              }
-
-              DropdownMenu(
-                expanded = isCategoryDropdownExpanded,
-                onDismissRequest = { isCategoryDropdownExpanded = false }
-              ) {
-                ExpenseCategory.values().forEach { cat ->
-                  val label = when(cat) {
-                    ExpenseCategory.ALIMENTACION -> "Alimentación"
-                    ExpenseCategory.CUIDADO_PERSONAL -> "Cuidado personal"
-                    ExpenseCategory.EDUCACION -> "Educación"
-                    ExpenseCategory.MASCOTAS -> "Mascotas"
-                    ExpenseCategory.SALIDAS -> "Salidas"
-                  }
-                  DropdownMenuItem(
-                    text = { Text(label) },
-                    onClick = {
-                      selectedCategory = cat
-                      isCategoryDropdownExpanded = false
+            Column(
+              verticalArrangement = Arrangement.SpaceBetween,
+              modifier = Modifier.weight(1f).fillMaxWidth()
+            ) {
+              ExpenseCategory.values().forEach { category ->
+                val amt = categorySpent[category] ?: 0.0
+                val percent = if (totalSpent > 0) (amt / totalSpent).toFloat() else 0f
+                
+                Column(modifier = Modifier.fillMaxWidth()) {
+                  Row(
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                  ) {
+                    val displayName = when(category) {
+                      ExpenseCategory.ALIMENTACION -> "Alimentación"
+                      ExpenseCategory.CUIDADO_PERSONAL -> "Cuidado personal"
+                      ExpenseCategory.EDUCACION -> "Educación"
+                      ExpenseCategory.MASCOTAS -> "Mascotas"
+                      ExpenseCategory.SALIDAS -> "Salidas"
                     }
-                  )
-                }
-              }
-            }
-          }
-
-          Spacer(modifier = Modifier.height(10.dp))
-
-          PlannerButton(
-            text = "Registrar gasto",
-            onClick = {
-              val amt = amountText.toDoubleOrNull()
-              if (description.isNotEmpty() && amt != null) {
-                onUpdateState { currentState ->
-                  currentState.copy(
-                    expenses = listOf(
-                      Expense(
-                        id = UUID.randomUUID().toString(),
-                        description = description,
-                        amount = amt,
-                        category = selectedCategory,
-                        date = "${currentState.currentMonth}-15" // Register expense in active month
-                      )
-                    ) + currentState.expenses
-                  )
-                }
-                description = ""
-                amountText = ""
-              }
-            },
-            modifier = Modifier.fillMaxWidth()
-          )
-        }
-      }
-    }
-
-    // BOTTOM ROW: Expenditures Breakdown by Category & History List
-    Row(
-      modifier = Modifier
-        .fillMaxWidth()
-        .weight(1f),
-      horizontalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-      // Left side: Category spent breakdown list
-      PlannerCard(modifier = Modifier.weight(1.1f)) {
-        Column(
-          modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-        ) {
-          Text(
-            text = "GASTOS POR CATEGORÍA",
-            style = Typography.labelSmall.copy(color = GrayText, fontWeight = FontWeight.Bold),
-            modifier = Modifier.padding(bottom = 12.dp)
-          )
-          
-          Column(
-            verticalArrangement = Arrangement.SpaceBetween,
-            modifier = Modifier.weight(1f).fillMaxWidth()
-          ) {
-            ExpenseCategory.values().forEach { category ->
-              val amt = categorySpent[category] ?: 0.0
-              val percent = if (totalSpent > 0) (amt / totalSpent).toFloat() else 0f
-              
-              Column(modifier = Modifier.fillMaxWidth()) {
-                Row(
-                  horizontalArrangement = Arrangement.SpaceBetween,
-                  modifier = Modifier.fillMaxWidth()
-                ) {
-                  val displayName = when(category) {
-                    ExpenseCategory.ALIMENTACION -> "Alimentación"
-                    ExpenseCategory.CUIDADO_PERSONAL -> "Cuidado personal"
-                    ExpenseCategory.EDUCACION -> "Educación"
-                    ExpenseCategory.MASCOTAS -> "Mascotas"
-                    ExpenseCategory.SALIDAS -> "Salidas"
-                  }
-                  Text(
-                    text = "● $displayName",
-                    style = Typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-                    color = when (category) {
-                      ExpenseCategory.ALIMENTACION -> SageGreenPrimary
-                      ExpenseCategory.CUIDADO_PERSONAL -> PastelBlushPrimary
-                      ExpenseCategory.EDUCACION -> NavyBluePrimary
-                      ExpenseCategory.MASCOTAS -> LocalCustomColors.current.darkAccent
-                      ExpenseCategory.SALIDAS -> UrgenciaAlta
-                    }
-                  )
-                  Text(
-                    text = "$${String.format("%.2f", amt)}",
-                    fontFamily = DataFontFamily,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = LocalCustomColors.current.text
-                  )
-                }
-                Spacer(modifier = Modifier.height(4.dp))
-                LinearProgressIndicator(
-                  progress = percent,
-                  color = when (category) {
-                    ExpenseCategory.ALIMENTACION -> SageGreenPrimary
-                    ExpenseCategory.CUIDADO_PERSONAL -> PastelBlushPrimary
-                    ExpenseCategory.EDUCACION -> NavyBluePrimary
-                    ExpenseCategory.MASCOTAS -> LocalCustomColors.current.darkAccent
-                    ExpenseCategory.SALIDAS -> UrgenciaAlta
-                  },
-                  trackColor = LocalCustomColors.current.activeBorder.copy(alpha = 0.2f),
-                  modifier = Modifier
-                    .fillMaxWidth()
-                    .height(6.dp)
-                    .clip(CircleShape)
-                )
-              }
-            }
-          }
-        }
-      }
-
-      // Right side: Transaction History list
-      PlannerCard(modifier = Modifier.weight(0.9f)) {
-        Column(modifier = Modifier.padding(16.dp)) {
-          Text(
-            text = "HISTORIAL DE TRANSACCIONES",
-            style = Typography.labelSmall.copy(color = GrayText, fontWeight = FontWeight.Bold),
-            modifier = Modifier.padding(bottom = 12.dp)
-          )
-          
-          LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-            modifier = Modifier.weight(1f)
-          ) {
-            items(currentExpenses) { expense ->
-              Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                  .fillMaxWidth()
-                  .clip(RoundedCornerShape(8.dp))
-                  .background(Color(0xFFFAF9F6))
-                  .padding(10.dp)
-              ) {
-                // Category Dot Indicators
-                Box(
-                  modifier = Modifier
-                    .size(8.dp)
-                    .clip(CircleShape)
-                    .background(
-                      when (expense.category) {
+                    Text(
+                      text = "● $displayName",
+                      style = Typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                      color = when (category) {
                         ExpenseCategory.ALIMENTACION -> SageGreenPrimary
                         ExpenseCategory.CUIDADO_PERSONAL -> PastelBlushPrimary
                         ExpenseCategory.EDUCACION -> NavyBluePrimary
@@ -524,28 +301,210 @@ fun FinancesScreen(
                         ExpenseCategory.SALIDAS -> UrgenciaAlta
                       }
                     )
-                )
-                
-                Spacer(modifier = Modifier.width(10.dp))
-                
-                Column(modifier = Modifier.weight(1f)) {
-                  Text(
-                    text = expense.description,
-                    style = Typography.bodyMedium.copy(fontWeight = FontWeight.Medium, color = LocalCustomColors.current.text)
+                    Text(
+                      text = "$${String.format("%.2f", amt)}",
+                      fontFamily = DataFontFamily,
+                      fontSize = 13.sp,
+                      fontWeight = FontWeight.Bold,
+                      color = LocalCustomColors.current.text
+                    )
+                  }
+                  Spacer(modifier = Modifier.height(4.dp))
+                  LinearProgressIndicator(
+                    progress = percent,
+                    color = when (category) {
+                      ExpenseCategory.ALIMENTACION -> SageGreenPrimary
+                      ExpenseCategory.CUIDADO_PERSONAL -> PastelBlushPrimary
+                      ExpenseCategory.EDUCACION -> NavyBluePrimary
+                      ExpenseCategory.MASCOTAS -> LocalCustomColors.current.darkAccent
+                      ExpenseCategory.SALIDAS -> UrgenciaAlta
+                    },
+                    trackColor = LocalCustomColors.current.activeBorder.copy(alpha = 0.2f),
+                    modifier = Modifier
+                      .fillMaxWidth()
+                      .height(6.dp)
+                      .clip(CircleShape)
                   )
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // RIGHT COLUMN: Add Expense & Transaction History
+      Column(
+        modifier = Modifier
+          .weight(0.8f)
+          .fillMaxHeight(),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+      ) {
+        // ADD EXPENSE CARD
+        PlannerCard(modifier = Modifier.fillMaxWidth()) {
+          Column(modifier = Modifier.padding(14.dp)) {
+            Text(
+              text = "AÑADIR GASTO",
+              fontFamily = TitleFontFamily,
+              fontWeight = FontWeight.Bold,
+              fontSize = 14.sp,
+              color = LocalCustomColors.current.text,
+              modifier = Modifier.padding(bottom = 10.dp)
+            )
+
+            // Description input
+            PlannerTextField(
+              value = description,
+              onValueChange = { description = it },
+              placeholder = "Descripción..."
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Amount input
+            Row(verticalAlignment = Alignment.CenterVertically) {
+              PlannerTextField(
+                value = amountText,
+                onValueChange = { amountText = it },
+                placeholder = "Importe ($)...",
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.weight(1f)
+              )
+              
+              Spacer(modifier = Modifier.width(8.dp))
+
+              // Category selector dropdown
+              Box {
+                Box(
+                  modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .border(1.dp, LocalCustomColors.current.activeBorder, RoundedCornerShape(12.dp))
+                    .clickable { isCategoryDropdownExpanded = true }
+                    .padding(horizontal = 12.dp, vertical = 12.dp)
+                ) {
                   Text(
-                    text = expense.date,
-                    style = Typography.labelSmall.copy(color = GrayText)
+                    text = when(selectedCategory) {
+                      ExpenseCategory.ALIMENTACION -> "Alimentación"
+                      ExpenseCategory.CUIDADO_PERSONAL -> "Cuidado personal"
+                      ExpenseCategory.EDUCACION -> "Educación"
+                      ExpenseCategory.MASCOTAS -> "Mascotas"
+                      ExpenseCategory.SALIDAS -> "Salidas"
+                    },
+                    style = Typography.bodyMedium.copy(color = LocalCustomColors.current.text)
                   )
                 }
 
-                Text(
-                  text = "-$${String.format("%.2f", expense.amount)}",
-                  fontFamily = DataFontFamily,
-                  fontSize = 13.sp,
-                  fontWeight = FontWeight.Bold,
-                  color = UrgenciaAlta
-                )
+                DropdownMenu(
+                  expanded = isCategoryDropdownExpanded,
+                  onDismissRequest = { isCategoryDropdownExpanded = false }
+                ) {
+                  ExpenseCategory.values().forEach { cat ->
+                    val label = when(cat) {
+                      ExpenseCategory.ALIMENTACION -> "Alimentación"
+                      ExpenseCategory.CUIDADO_PERSONAL -> "Cuidado personal"
+                      ExpenseCategory.EDUCACION -> "Educación"
+                      ExpenseCategory.MASCOTAS -> "Mascotas"
+                      ExpenseCategory.SALIDAS -> "Salidas"
+                    }
+                    DropdownMenuItem(
+                      text = { Text(label) },
+                      onClick = {
+                        selectedCategory = cat
+                        isCategoryDropdownExpanded = false
+                      }
+                    )
+                  }
+                }
+              }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            PlannerButton(
+              text = "Registrar gasto",
+              onClick = {
+                val amt = amountText.toDoubleOrNull()
+                if (description.isNotEmpty() && amt != null) {
+                  onUpdateState { currentState ->
+                    currentState.copy(
+                      expenses = listOf(
+                        Expense(
+                          id = UUID.randomUUID().toString(),
+                          description = description,
+                          amount = amt,
+                          category = selectedCategory,
+                          date = "${currentState.currentMonth}-15"
+                        )
+                      ) + currentState.expenses
+                    )
+                  }
+                  description = ""
+                  amountText = ""
+                }
+              },
+              modifier = Modifier.fillMaxWidth()
+            )
+          }
+        }
+
+        // TRANSACTION HISTORY CARD
+        PlannerCard(modifier = Modifier.fillMaxWidth().weight(1f)) {
+          Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+              text = "HISTORIAL DE TRANSACCIONES",
+              style = Typography.labelSmall.copy(color = GrayText, fontWeight = FontWeight.Bold),
+              modifier = Modifier.padding(bottom = 12.dp)
+            )
+            
+            LazyColumn(
+              verticalArrangement = Arrangement.spacedBy(10.dp),
+              modifier = Modifier.weight(1f)
+            ) {
+              items(currentExpenses) { expense ->
+                Row(
+                  verticalAlignment = Alignment.CenterVertically,
+                  modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color(0xFFFAF9F6))
+                    .padding(10.dp)
+                ) {
+                  // Category Dot Indicators
+                  Box(
+                    modifier = Modifier
+                      .size(8.dp)
+                      .clip(CircleShape)
+                      .background(
+                        when (expense.category) {
+                          ExpenseCategory.ALIMENTACION -> SageGreenPrimary
+                          ExpenseCategory.CUIDADO_PERSONAL -> PastelBlushPrimary
+                          ExpenseCategory.EDUCACION -> NavyBluePrimary
+                          ExpenseCategory.MASCOTAS -> LocalCustomColors.current.darkAccent
+                          ExpenseCategory.SALIDAS -> UrgenciaAlta
+                        }
+                      )
+                  )
+                  
+                  Spacer(modifier = Modifier.width(10.dp))
+                  
+                  Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                      text = expense.description,
+                      style = Typography.bodyMedium.copy(fontWeight = FontWeight.Medium, color = LocalCustomColors.current.text)
+                    )
+                    Text(
+                      text = expense.date,
+                      style = Typography.labelSmall.copy(color = GrayText)
+                    )
+                  }
+
+                  Text(
+                    text = "-$${String.format("%.2f", expense.amount)}",
+                    fontFamily = DataFontFamily,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = UrgenciaAlta
+                  )
+                }
               }
             }
           }

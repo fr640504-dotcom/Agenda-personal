@@ -251,11 +251,6 @@ fun AppearanceScreen(
                 fontSize = 18.sp,
                 color = LocalCustomColors.current.text
               )
-              Text(
-                text = "Cambiar foto de perfil",
-                style = Typography.bodyMedium.copy(color = LocalCustomColors.current.primary, fontWeight = FontWeight.Bold),
-                modifier = Modifier.clickable { /* Photo selector logic placeholder */ }
-              )
             }
           }
 

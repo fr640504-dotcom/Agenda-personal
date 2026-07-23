@@ -28,6 +28,7 @@ import java.util.UUID
 fun DailyPlannerScreen(
   state: PlannerState,
   onUpdateState: ((PlannerState) -> PlannerState) -> Unit,
+  onNavigateToTab: (String) -> Unit,
   modifier: Modifier = Modifier
 ) {
   var newEventTitle by remember { mutableStateOf("") }
@@ -37,19 +38,123 @@ fun DailyPlannerScreen(
   var newEventDuration by remember { mutableStateOf("") }
   var durationUnit by remember { mutableStateOf("min") }
 
+  // Daily schedule is global (persistent across all days)
+  val currentEvents = state.dailyEvents
+
+  val currentNotes = remember(state.selectedDate, state.dailyNotesMap) {
+    state.dailyNotesMap[state.selectedDate] ?: ""
+  }
+
+  val currentWater = remember(state.selectedDate, state.waterGlassesMap) {
+    state.waterGlassesMap[state.selectedDate] ?: 0
+  }
+
   ScreenFrame(
     cover = state.appearance.cover,
     title = "Planificador del Día",
     subtitle = "Horario y metas del día",
     bannerPath = state.customBannerPath,
-    coverPath = state.customCoverPath,
-    onUpdateBannerPath = { path ->
-      onUpdateState { it.copy(customBannerPath = path) }
-    },
-    onUpdateCoverPath = { path ->
-      onUpdateState { it.copy(customCoverPath = path) }
-    }
+    coverPath = state.customCoverPath
   ) {
+    // DATE NAVIGATION BAR
+    PlannerCard(
+      modifier = Modifier
+        .fillMaxWidth()
+        .padding(bottom = 16.dp)
+    ) {
+      Row(
+        modifier = Modifier
+          .fillMaxWidth()
+          .padding(horizontal = 16.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+      ) {
+        Row(
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+          // Backward button
+          Box(
+            modifier = Modifier
+              .size(36.dp)
+              .clip(RoundedCornerShape(8.dp))
+              .background(LocalCustomColors.current.primary.copy(alpha = 0.12f))
+              .clickable {
+                try {
+                  val localDate = java.time.LocalDate.parse(state.selectedDate)
+                  val newDate = localDate.minusDays(1).toString()
+                  onUpdateState { it.copy(selectedDate = newDate) }
+                } catch (e: Exception) {}
+              },
+            contentAlignment = Alignment.Center
+          ) {
+            Text("◀", color = LocalCustomColors.current.darkAccent, fontSize = 12.sp)
+          }
+
+          // Forward button
+          Box(
+            modifier = Modifier
+              .size(36.dp)
+              .clip(RoundedCornerShape(8.dp))
+              .background(LocalCustomColors.current.primary.copy(alpha = 0.12f))
+              .clickable {
+                try {
+                  val localDate = java.time.LocalDate.parse(state.selectedDate)
+                  val newDate = localDate.plusDays(1).toString()
+                  onUpdateState { it.copy(selectedDate = newDate) }
+                } catch (e: Exception) {}
+              },
+            contentAlignment = Alignment.Center
+          ) {
+            Text("▶", color = LocalCustomColors.current.darkAccent, fontSize = 12.sp)
+          }
+          
+          Spacer(modifier = Modifier.width(8.dp))
+
+          // Date text
+          val readableDate = remember(state.selectedDate) {
+            try {
+              val localDate = java.time.LocalDate.parse(state.selectedDate)
+              val formatter = java.time.format.DateTimeFormatter.ofPattern("EEEE, d 'de' MMMM, yyyy", java.util.Locale("es", "ES"))
+              val formatted = localDate.format(formatter)
+              formatted.replaceFirstChar { it.uppercase() }
+            } catch (e: Exception) {
+              state.selectedDate
+            }
+          }
+
+          Text(
+            text = readableDate,
+            fontFamily = TitleFontFamily,
+            fontWeight = FontWeight.Bold,
+            fontSize = 18.sp,
+            color = LocalCustomColors.current.text
+          )
+        }
+
+        // Today button if not today
+        val todayStr = remember { getTodayDateString() }
+        if (state.selectedDate != todayStr) {
+          Box(
+            modifier = Modifier
+              .clip(RoundedCornerShape(8.dp))
+              .background(LocalCustomColors.current.primary)
+              .clickable {
+                onUpdateState { it.copy(selectedDate = todayStr) }
+              }
+              .padding(horizontal = 12.dp, vertical = 6.dp)
+          ) {
+            Text(
+              text = "Hoy",
+              color = Color.White,
+              fontWeight = FontWeight.Bold,
+              fontSize = 12.sp
+            )
+          }
+        }
+      }
+    }
+
     Row(
       modifier = Modifier
         .fillMaxWidth()
@@ -57,7 +162,11 @@ fun DailyPlannerScreen(
       horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
       // LEFT PANEL: Hourly Timeline List
-      PlannerCard(modifier = Modifier.weight(1.2f)) {
+      PlannerCard(
+        modifier = Modifier
+          .weight(1.2f)
+          .fillMaxHeight()
+      ) {
         Column(modifier = Modifier.padding(16.dp).fillMaxSize()) {
           Text(
             text = "Horario del Día",
@@ -72,7 +181,7 @@ fun DailyPlannerScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.weight(1f)
           ) {
-            items(state.dailyEvents) { event ->
+            items(currentEvents) { event ->
               Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
@@ -247,7 +356,19 @@ fun DailyPlannerScreen(
                 .clickable {
                   if (newEventTitle.isNotEmpty() && newEventTime.isNotEmpty()) {
                     onUpdateState { currentState ->
-                      val finalTime = "$newEventTime $selectedAmPm"
+                      val formattedTime = if (!newEventTime.contains(":")) {
+                        "$newEventTime:00"
+                      } else {
+                        val parts = newEventTime.split(":")
+                        if (parts.size == 2 && parts[1].isEmpty()) {
+                          "${newEventTime}00"
+                        } else if (parts.size == 2 && parts[1].length == 1) {
+                          "${newEventTime}0"
+                        } else {
+                          newEventTime
+                        }
+                      }
+                      val finalTime = "$formattedTime $selectedAmPm"
                       val finalDuration = "${if (newEventDuration.isNotEmpty()) newEventDuration else "30"} $durationUnit"
                       currentState.copy(
                         dailyEvents = currentState.dailyEvents + DailyEvent(
@@ -280,7 +401,7 @@ fun DailyPlannerScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp)
       ) {
         // Top Priorities Checklist
-        PlannerCard {
+        PlannerCard(modifier = Modifier.fillMaxWidth()) {
           Column(modifier = Modifier.padding(16.dp)) {
             Text(
               text = "Prioridades Principales",
@@ -291,46 +412,58 @@ fun DailyPlannerScreen(
               modifier = Modifier.padding(bottom = 12.dp)
             )
             
-            val dailyPriorities = remember(state.tasks) {
-              state.tasks.filter { it.priority == TaskPriority.ALTA }.take(3)
+            val dailyPriorities = remember(state.tasks, state.selectedDate) {
+              state.tasks.filter { it.priority == TaskPriority.ALTA && it.date == state.selectedDate }.take(3)
             }
             
-            dailyPriorities.forEach { task ->
-              Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                  .fillMaxWidth()
-                  .padding(vertical = 4.dp)
-              ) {
-                PlannerCheckbox(
-                  checked = task.isCompleted,
-                  onCheckedChange = { isChecked ->
-                    onUpdateState { currentState ->
-                      currentState.copy(
-                        tasks = currentState.tasks.map {
-                          if (it.id == task.id) it.copy(isCompleted = isChecked) else it
-                        }
-                      )
+            if (dailyPriorities.isNotEmpty()) {
+              dailyPriorities.forEach { task ->
+                Row(
+                  verticalAlignment = Alignment.CenterVertically,
+                  modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp)
+                ) {
+                  PlannerCheckbox(
+                    checked = task.isCompleted,
+                    onCheckedChange = { isChecked ->
+                      onUpdateState { currentState ->
+                        currentState.copy(
+                          tasks = currentState.tasks.map {
+                            if (it.id == task.id) it.copy(isCompleted = isChecked) else it
+                          }
+                        )
+                      }
                     }
-                  }
-                )
-                Spacer(modifier = Modifier.width(10.dp))
-                Text(
-                  text = task.title,
-                  style = Typography.bodyMedium.copy(
-                    textDecoration = if (task.isCompleted) androidx.compose.ui.text.style.TextDecoration.LineThrough else null,
-                    color = if (task.isCompleted) GrayText else LocalCustomColors.current.text
-                  ),
-                  maxLines = 1,
-                  overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                )
+                  )
+                  Spacer(modifier = Modifier.width(10.dp))
+                  Text(
+                    text = task.title,
+                    style = Typography.bodyMedium.copy(
+                      textDecoration = if (task.isCompleted) androidx.compose.ui.text.style.TextDecoration.LineThrough else null,
+                      color = if (task.isCompleted) GrayText else LocalCustomColors.current.text
+                    ),
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                  )
+                }
               }
+            } else {
+              Text(
+                text = "No hay prioridades altas para hoy.",
+                style = Typography.bodyMedium.copy(color = GrayText),
+                modifier = Modifier.padding(vertical = 4.dp)
+              )
             }
           }
         }
         
         // Notes Card
-        PlannerCard(modifier = Modifier.weight(1f)) {
+        PlannerCard(
+          modifier = Modifier
+            .fillMaxWidth()
+            .weight(1f)
+        ) {
           Column(modifier = Modifier.padding(16.dp)) {
             Text(
               text = "Notas del Día",
@@ -343,9 +476,13 @@ fun DailyPlannerScreen(
             
             // Editable text area
             BasicTextField(
-              value = state.dailyNotes,
+              value = currentNotes,
               onValueChange = { newText ->
-                onUpdateState { it.copy(dailyNotes = newText) }
+                onUpdateState { currentState ->
+                  val updatedMap = currentState.dailyNotesMap.toMutableMap()
+                  updatedMap[currentState.selectedDate] = newText
+                  currentState.copy(dailyNotesMap = updatedMap)
+                }
               },
               textStyle = Typography.bodyMedium.copy(color = LocalCustomColors.current.text, lineHeight = 20.sp),
               modifier = Modifier
@@ -356,7 +493,7 @@ fun DailyPlannerScreen(
         }
         
         // Water Tracker Card
-        PlannerCard {
+        PlannerCard(modifier = Modifier.fillMaxWidth()) {
           Column(modifier = Modifier.padding(16.dp)) {
             Row(
               horizontalArrangement = Arrangement.SpaceBetween,
@@ -371,7 +508,7 @@ fun DailyPlannerScreen(
                 color = LocalCustomColors.current.text
               )
               Text(
-                text = "${state.waterGlassesDrunk} de 8 vasos",
+                text = "$currentWater de 8 vasos",
                 fontFamily = DataFontFamily,
                 fontSize = 13.sp,
                 color = LocalCustomColors.current.primary,
@@ -386,7 +523,7 @@ fun DailyPlannerScreen(
               horizontalArrangement = Arrangement.SpaceBetween
             ) {
               for (glassIndex in 1..8) {
-                val isDrunk = glassIndex <= state.waterGlassesDrunk
+                val isDrunk = glassIndex <= currentWater
                 val colors = LocalCustomColors.current
                 Box(
                   modifier = Modifier
@@ -403,9 +540,10 @@ fun DailyPlannerScreen(
                     )
                     .clickable {
                       onUpdateState { currentState ->
-                        currentState.copy(
-                          waterGlassesDrunk = if (currentState.waterGlassesDrunk == glassIndex) glassIndex - 1 else glassIndex
-                        )
+                        val updatedMap = currentState.waterGlassesMap.toMutableMap()
+                        val currentVal = updatedMap[currentState.selectedDate] ?: 0
+                        updatedMap[currentState.selectedDate] = if (currentVal == glassIndex) glassIndex - 1 else glassIndex
+                        currentState.copy(waterGlassesMap = updatedMap)
                       }
                     },
                   contentAlignment = Alignment.Center

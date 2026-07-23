@@ -67,6 +67,14 @@ fun getDefaultDeviceTimezone(): String {
   }
 }
 
+fun getTodayDateString(): String {
+  return try {
+    java.time.LocalDate.now().toString()
+  } catch (e: Exception) {
+    "2026-07-22"
+  }
+}
+
 data class UserProfile(
   val name: String = "Fatima Rentería",
   val email: String = "sofia.garcia@email.com",
@@ -161,7 +169,11 @@ data class PlannerState(
   val monthlyRecords: Map<String, MonthlyRecord> = defaultMonthlyRecords(),
   val personalImages: List<String> = emptyList(),
   val customBannerPath: String? = null,
-  val customCoverPath: String? = null
+  val customCoverPath: String? = null,
+  val selectedDate: String = getTodayDateString(),
+  val dailyEventsMap: Map<String, List<DailyEvent>> = emptyMap(),
+  val dailyNotesMap: Map<String, String> = emptyMap(),
+  val waterGlassesMap: Map<String, Int> = emptyMap()
 )
 
 fun initialTasks() = emptyList<PlannerTask>()

@@ -36,13 +36,7 @@ fun TasksScreen(
     title = "Mis Listas de Tareas",
     subtitle = "Organizadas por área de vida",
     bannerPath = state.customBannerPath,
-    coverPath = state.customCoverPath,
-    onUpdateBannerPath = { path ->
-      onUpdateState { it.copy(customBannerPath = path) }
-    },
-    onUpdateCoverPath = { path ->
-      onUpdateState { it.copy(customCoverPath = path) }
-    }
+    coverPath = state.customCoverPath
   ) {
     Row(
       modifier = Modifier
@@ -66,7 +60,7 @@ fun TasksScreen(
                   category = TaskCategory.ACADEMIC,
                   priority = priority,
                   isCompleted = false,
-                  date = "2026-07-15"
+                  date = currentState.selectedDate
                 )
               )
             }
@@ -84,7 +78,7 @@ fun TasksScreen(
         },
         modifier = Modifier.weight(1f)
       )
-
+ 
       // COLUMN 2: Home Tasks
       TaskColumnWidget(
         title = "Tareas del Hogar",
@@ -101,7 +95,7 @@ fun TasksScreen(
                   category = TaskCategory.HOME,
                   priority = priority,
                   isCompleted = false,
-                  date = "2026-07-15"
+                  date = currentState.selectedDate
                 )
               )
             }
@@ -119,7 +113,7 @@ fun TasksScreen(
         },
         modifier = Modifier.weight(1f)
       )
-
+ 
       // COLUMN 3: Personal Tasks
       TaskColumnWidget(
         title = "Tareas Personales",
@@ -136,7 +130,7 @@ fun TasksScreen(
                   category = TaskCategory.PERSONAL,
                   priority = priority,
                   isCompleted = false,
-                  date = "2026-07-15"
+                  date = currentState.selectedDate
                 )
               )
             }

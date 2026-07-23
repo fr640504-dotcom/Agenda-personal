@@ -3,6 +3,8 @@ package com.example.agenda.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -37,8 +39,8 @@ fun HabitsScreen(
   var energyLevel by remember { mutableStateOf("Medio") }
 
   // Statistics calculations
-  val completedToday = remember(state.habits) {
-    state.habits.count { it.completions["2026-07-15"] == true }
+  val completedToday = remember(state.habits, state.selectedDate) {
+    state.habits.count { it.completions[state.selectedDate] == true }
   }
   val totalHabits = state.habits.size
 
@@ -57,18 +59,61 @@ fun HabitsScreen(
     }
   }
 
+  // Calculate dynamic active streak across all habits
+  val activeStreak = remember(state.habits) {
+    val completionDates = state.habits.flatMap { it.completions.filter { c -> c.value }.keys }.toSet()
+    if (completionDates.isEmpty()) 0 else {
+      var streak = 0
+      var checkDate = java.time.LocalDate.now()
+      val formatter = java.time.format.DateTimeFormatter.ISO_LOCAL_DATE
+      while (true) {
+        val dateString = checkDate.format(formatter)
+        if (completionDates.contains(dateString)) {
+          streak++
+          checkDate = checkDate.minusDays(1)
+        } else {
+          if (streak == 0) {
+            checkDate = checkDate.minusDays(1)
+            val yesterdayString = checkDate.format(formatter)
+            if (completionDates.contains(yesterdayString)) {
+              streak++
+              checkDate = checkDate.minusDays(1)
+              continue
+            }
+          }
+          break
+        }
+      }
+      streak
+    }
+  }
+
+  // Generate all dates of the active month dynamically
+  val monthDates = remember(state.currentMonth) {
+    val list = mutableListOf<String>()
+    try {
+      val parts = state.currentMonth.split("-")
+      val year = parts[0].toInt()
+      val month = parts[1].toInt()
+      val cal = java.util.GregorianCalendar(year, month - 1, 1)
+      val maxDays = cal.getActualMaximum(java.util.Calendar.DAY_OF_MONTH)
+      for (day in 1..maxDays) {
+        list.add(String.format(java.util.Locale.US, "%d-%02d-%02d", year, month, day))
+      }
+    } catch (e: Exception) {
+      for (i in 1..31) {
+        list.add("2026-07-${String.format("%02d", i)}")
+      }
+    }
+    list
+  }
+
   ScreenFrame(
     cover = state.appearance.cover,
     title = "Hábitos & Bienestar",
     subtitle = "Seguimiento de salud física y mental",
     bannerPath = state.customBannerPath,
-    coverPath = state.customCoverPath,
-    onUpdateBannerPath = { path ->
-      onUpdateState { it.copy(customBannerPath = path) }
-    },
-    onUpdateCoverPath = { path ->
-      onUpdateState { it.copy(customCoverPath = path) }
-    }
+    coverPath = state.customCoverPath
   ) {
     Row(
       modifier = Modifier
@@ -83,11 +128,11 @@ fun HabitsScreen(
           .fillMaxHeight(),
         verticalArrangement = Arrangement.spacedBy(16.dp)
       ) {
-        // Habit Tracker 14-day history Card
+        // Habit Tracker Monthly history Card
         PlannerCard(modifier = Modifier.weight(1.2f)) {
           Column(modifier = Modifier.padding(16.dp)) {
             Text(
-              text = "Rastreador de Hábitos — Últimos 14 Días",
+              text = "Rastreador de Hábitos — Todo el Mes",
               fontFamily = TitleFontFamily,
               fontWeight = FontWeight.Bold,
               fontSize = 16.sp,
@@ -95,7 +140,7 @@ fun HabitsScreen(
               modifier = Modifier.padding(bottom = 12.dp)
             )
 
-            // Header for the grid: Days numbers 2 to 15 (representing last 14 days)
+            // Header for the grid: Days of the active month
             Row(
               modifier = Modifier.fillMaxWidth(),
               verticalAlignment = Alignment.CenterVertically
@@ -111,14 +156,19 @@ fun HabitsScreen(
                 modifier = Modifier.weight(1f),
                 horizontalArrangement = Arrangement.SpaceBetween
               ) {
-                for (d in 2..15) {
+                monthDates.forEach { dateStr ->
+                  val dayNum = try {
+                    dateStr.split("-").getOrNull(2)?.toIntOrNull()?.toString() ?: ""
+                  } catch (e: Exception) {
+                    ""
+                  }
                   Text(
-                    text = "$d",
+                    text = dayNum,
                     fontFamily = DataFontFamily,
-                    fontSize = 10.sp,
+                    fontSize = 9.sp,
                     fontWeight = FontWeight.Bold,
                     color = GrayText,
-                    modifier = Modifier.width(16.dp),
+                    modifier = Modifier.width(14.dp),
                     textAlign = TextAlign.Center
                   )
                 }
@@ -146,18 +196,17 @@ fun HabitsScreen(
                   )
                   Spacer(modifier = Modifier.width(10.dp))
                   
-                  // 14 check squares (July 2nd to 15th)
+                  // Monthly check squares
                   Row(
                     modifier = Modifier.weight(1f),
                     horizontalArrangement = Arrangement.SpaceBetween
                   ) {
-                    for (day in 2..15) {
-                      val dateStr = "2026-07-${String.format("%02d", day)}"
+                    monthDates.forEach { dateStr ->
                       val isCompleted = habit.completions[dateStr] == true
                       
                       Box(
                         modifier = Modifier
-                          .size(16.dp)
+                          .size(14.dp)
                           .clip(RoundedCornerShape(3.dp))
                           .background(
                             if (isCompleted) LocalCustomColors.current.primary
@@ -281,7 +330,7 @@ fun HabitsScreen(
                       .size(6.dp)
                       .clip(CircleShape)
                       .background(
-                        if (checkIn.date == "2026-07-15") LocalCustomColors.current.primary
+                        if (checkIn.date == state.selectedDate) LocalCustomColors.current.primary
                         else Color.LightGray
                       )
                   )
@@ -419,10 +468,10 @@ fun HabitsScreen(
               onClick = {
                 selectedMood?.let { mood ->
                   onUpdateState { currentState ->
-                    // Remove existing entry for today if any, and append new check-in
-                    val cleanCheckIns = currentState.moodCheckIns.filter { it.date != "2026-07-15" }
+                    // Remove existing entry for selectedDate if any, and append new check-in
+                    val cleanCheckIns = currentState.moodCheckIns.filter { it.date != currentState.selectedDate }
                     currentState.copy(
-                      moodCheckIns = cleanCheckIns + MoodCheckIn("2026-07-15", mood, energyLevel)
+                      moodCheckIns = cleanCheckIns + MoodCheckIn(currentState.selectedDate, mood, energyLevel)
                     )
                   }
                 }
@@ -450,9 +499,9 @@ fun HabitsScreen(
               modifier = Modifier.fillMaxWidth(),
               verticalAlignment = Alignment.CenterVertically
             ) {
-              Text(text = "Mejor racha activa Meditación", style = Typography.bodyMedium.copy(color = GrayText))
+              Text(text = "Racha activa global", style = Typography.bodyMedium.copy(color = GrayText))
               Text(
-                text = "12 días 🔥",
+                text = "$activeStreak días 🔥",
                 fontFamily = DataFontFamily,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,

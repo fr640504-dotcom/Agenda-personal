@@ -39,15 +39,18 @@ fun MainScreen(
         when (viewModel.currentTab) {
           "Dashboard" -> DashboardScreen(
             state = plannerState,
-            onUpdateState = { viewModel.updateState(it) }
+            onUpdateState = { viewModel.updateState(it) },
+            onNavigateToTab = { viewModel.selectTab(it) }
           )
           "Monthly" -> MonthlyPlannerScreen(
             state = plannerState,
-            onUpdateState = { viewModel.updateState(it) }
+            onUpdateState = { viewModel.updateState(it) },
+            onNavigateToTab = { viewModel.selectTab(it) }
           )
           "Daily" -> DailyPlannerScreen(
             state = plannerState,
-            onUpdateState = { viewModel.updateState(it) }
+            onUpdateState = { viewModel.updateState(it) },
+            onNavigateToTab = { viewModel.selectTab(it) }
           )
           "Tasks" -> TasksScreen(
             state = plannerState,

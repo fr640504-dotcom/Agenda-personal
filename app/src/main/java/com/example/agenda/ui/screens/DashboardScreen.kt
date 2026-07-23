@@ -36,6 +36,7 @@ import com.example.agenda.ui.components.*
 fun DashboardScreen(
   state: PlannerState,
   onUpdateState: ((PlannerState) -> PlannerState) -> Unit,
+  onNavigateToTab: (String) -> Unit,
   modifier: Modifier = Modifier
 ) {
   val subscriptionsSum = remember(state.shoppingItems) {
@@ -101,13 +102,7 @@ fun DashboardScreen(
     title = "Buenos días, ${state.profile.name} ✦",
     subtitle = "Aquí tienes tu resumen de hoy — todo en un vistazo.",
     bannerPath = state.customBannerPath,
-    coverPath = state.customCoverPath,
-    onUpdateBannerPath = { path ->
-      onUpdateState { it.copy(customBannerPath = path) }
-    },
-    onUpdateCoverPath = { path ->
-      onUpdateState { it.copy(customCoverPath = path) }
-    }
+    coverPath = state.customCoverPath
   ) {
     Row(
       modifier = Modifier
@@ -170,6 +165,16 @@ fun DashboardScreen(
                 "15"
               }
             }
+
+            val selectedDay = remember(state.selectedDate) {
+              if (state.selectedDate.startsWith("2026-07")) {
+                try {
+                  state.selectedDate.split("-").getOrNull(2)?.toIntOrNull()?.toString() ?: ""
+                } catch (e: Exception) {
+                  ""
+                }
+              } else ""
+            }
             
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
               for (week in 0 until 5) {
@@ -177,12 +182,28 @@ fun DashboardScreen(
                   for (dayIndex in 0 until 7) {
                     val dayStr = days.getOrNull(week * 7 + dayIndex) ?: ""
                     val isToday = dayStr == todayDayOfMonth
+                    val isSelected = dayStr == selectedDay && dayStr.isNotEmpty()
                     
                     Box(
                       modifier = Modifier
                         .size(28.dp)
                         .clip(CircleShape)
-                        .background(if (isToday) LocalCustomColors.current.primary else Color.Transparent),
+                        .background(
+                          if (isSelected) LocalCustomColors.current.primary
+                          else if (isToday) LocalCustomColors.current.primary.copy(alpha = 0.15f)
+                          else Color.Transparent
+                        )
+                        .border(
+                          1.dp,
+                          if (isToday) LocalCustomColors.current.primary else Color.Transparent,
+                          CircleShape
+                        )
+                        .clickable(enabled = dayStr.isNotEmpty()) {
+                          try {
+                            val newDateStr = String.format(java.util.Locale.US, "2026-07-%02d", dayStr.toInt())
+                            onUpdateState { it.copy(selectedDate = newDateStr) }
+                          } catch (e: Exception) {}
+                        },
                       contentAlignment = Alignment.Center
                     ) {
                       if (dayStr.isNotEmpty()) {
@@ -190,8 +211,8 @@ fun DashboardScreen(
                           text = dayStr,
                           fontFamily = DataFontFamily,
                           fontSize = 12.sp,
-                          fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal,
-                          color = if (isToday) Color.White else LocalCustomColors.current.text
+                          fontWeight = if (isToday || isSelected) FontWeight.Bold else FontWeight.Normal,
+                          color = if (isSelected) Color.White else LocalCustomColors.current.text
                         )
                       }
                     }
@@ -202,11 +223,11 @@ fun DashboardScreen(
           }
         }
         
-        // Today's Priorities Card
+        // Today's Priorities Card (Filtered by selected Date)
         PlannerCard(modifier = Modifier.fillMaxWidth().weight(1f)) {
           Column(modifier = Modifier.padding(16.dp)) {
             Text(
-              text = "Prioridades de Hoy",
+              text = "Prioridades del Día",
               fontFamily = TitleFontFamily,
               fontWeight = FontWeight.Bold,
               fontSize = 16.sp,
@@ -214,62 +235,74 @@ fun DashboardScreen(
               modifier = Modifier.padding(bottom = 12.dp)
             )
             
-            val priorities = remember(state.tasks) {
-              state.tasks.filter { it.priority == TaskPriority.ALTA }.take(4)
+            val priorities = remember(state.tasks, state.selectedDate) {
+              state.tasks.filter { it.priority == TaskPriority.ALTA && it.date == state.selectedDate }.take(4)
             }
             
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-              items(priorities) { task ->
-                Row(
-                  verticalAlignment = Alignment.CenterVertically,
-                  modifier = Modifier.fillMaxWidth()
-                ) {
-                  PlannerCheckbox(
-                    checked = task.isCompleted,
-                    onCheckedChange = { isChecked ->
-                      onUpdateState { currentState ->
-                        currentState.copy(
-                          tasks = currentState.tasks.map {
-                            if (it.id == task.id) it.copy(isCompleted = isChecked) else it
-                          }
-                        )
-                      }
-                    }
-                  )
-                  Spacer(modifier = Modifier.width(10.dp))
-                  Text(
-                    text = task.title,
-                    style = Typography.bodyMedium.copy(
-                      textDecoration = if (task.isCompleted) androidx.compose.ui.text.style.TextDecoration.LineThrough else null,
-                      color = if (task.isCompleted) GrayText else LocalCustomColors.current.text
-                    ),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
-                  )
-                  Spacer(modifier = Modifier.width(6.dp))
-                  
-                  // Category Badge
-                  val badgeColor = when (task.category) {
-                    TaskCategory.ACADEMIC -> UrgenciaBaja.copy(alpha = 0.8f)
-                    TaskCategory.HOME -> UrgenciaMedia.copy(alpha = 0.8f)
-                    TaskCategory.PERSONAL -> UrgenciaAlta.copy(alpha = 0.8f)
-                  }
-                  Box(
-                    modifier = Modifier
-                      .clip(RoundedCornerShape(6.dp))
-                      .background(badgeColor)
-                      .padding(horizontal = 6.dp, vertical = 2.dp)
+            if (priorities.isNotEmpty()) {
+              LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                items(priorities) { task ->
+                  Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
                   ) {
-                    Text(
-                      text = task.category.name.lowercase().capitalize(),
-                      fontFamily = BodyFontFamily,
-                      fontSize = 10.sp,
-                      fontWeight = FontWeight.Bold,
-                      color = Color.White
+                    PlannerCheckbox(
+                      checked = task.isCompleted,
+                      onCheckedChange = { isChecked ->
+                        onUpdateState { currentState ->
+                          currentState.copy(
+                            tasks = currentState.tasks.map {
+                              if (it.id == task.id) it.copy(isCompleted = isChecked) else it
+                            }
+                          )
+                        }
+                      }
                     )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                      text = task.title,
+                      style = Typography.bodyMedium.copy(
+                        textDecoration = if (task.isCompleted) androidx.compose.ui.text.style.TextDecoration.LineThrough else null,
+                        color = if (task.isCompleted) GrayText else LocalCustomColors.current.text
+                      ),
+                      maxLines = 1,
+                      overflow = TextOverflow.Ellipsis,
+                      modifier = Modifier.weight(1f)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    
+                    // Category Badge
+                    val badgeColor = when (task.category) {
+                      TaskCategory.ACADEMIC -> UrgenciaBaja.copy(alpha = 0.8f)
+                      TaskCategory.HOME -> UrgenciaMedia.copy(alpha = 0.8f)
+                      TaskCategory.PERSONAL -> UrgenciaAlta.copy(alpha = 0.8f)
+                    }
+                    Box(
+                      modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(badgeColor)
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                      Text(
+                        text = task.category.name.lowercase().capitalize(),
+                        fontFamily = BodyFontFamily,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                      )
+                    }
                   }
                 }
+              }
+            } else {
+              Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+              ) {
+                Text(
+                  text = "Sin prioridades altas para hoy.",
+                  style = Typography.bodyMedium.copy(color = GrayText)
+                )
               }
             }
           }
@@ -286,61 +319,85 @@ fun DashboardScreen(
         // Today's Timeline Card ("Hoy")
         PlannerCard(modifier = Modifier.fillMaxWidth().weight(1.1f)) {
           Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-              text = "Hoy",
-              fontFamily = TitleFontFamily,
-              fontWeight = FontWeight.Bold,
-              fontSize = 16.sp,
-              color = LocalCustomColors.current.text,
-              modifier = Modifier.padding(bottom = 12.dp)
-            )
+            Row(
+              modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+              horizontalArrangement = Arrangement.SpaceBetween,
+              verticalAlignment = Alignment.CenterVertically
+            ) {
+              Text(
+                text = "Horario del Día",
+                fontFamily = TitleFontFamily,
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                color = LocalCustomColors.current.text
+              )
+              Text(
+                text = "Detalle ➔",
+                style = Typography.labelSmall.copy(color = LocalCustomColors.current.primary, fontWeight = FontWeight.Bold),
+                modifier = Modifier.clickable { onNavigateToTab("Daily") }
+              )
+            }
             
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-              items(state.dailyEvents.take(4)) { event ->
-                Row(
-                  verticalAlignment = Alignment.CenterVertically,
-                  modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(
-                      if (event.isCompleted) LocalCustomColors.current.lightHighlight.copy(alpha = 0.4f)
-                      else LocalCustomColors.current.background.copy(alpha = 0.5f)
+            val selectedDateEvents = state.dailyEvents
+
+            if (selectedDateEvents.isNotEmpty()) {
+              LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                items(selectedDateEvents.take(4)) { event ->
+                  Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                      .fillMaxWidth()
+                      .clip(RoundedCornerShape(8.dp))
+                      .background(
+                        if (event.isCompleted) LocalCustomColors.current.lightHighlight.copy(alpha = 0.4f)
+                        else LocalCustomColors.current.background.copy(alpha = 0.5f)
+                      )
+                      .padding(8.dp)
+                  ) {
+                    Text(
+                      text = event.time,
+                      fontFamily = DataFontFamily,
+                      fontSize = 12.sp,
+                      fontWeight = FontWeight.Bold,
+                      color = LocalCustomColors.current.primary,
+                      modifier = Modifier.width(48.dp)
                     )
-                    .padding(8.dp)
-                ) {
-                  Text(
-                    text = event.time,
-                    fontFamily = DataFontFamily,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = LocalCustomColors.current.primary,
-                    modifier = Modifier.width(48.dp)
-                  )
-                  Spacer(modifier = Modifier.width(6.dp))
-                  Text(
-                    text = event.title,
-                    style = Typography.bodyMedium.copy(
-                      color = if (event.isCompleted) GrayText else LocalCustomColors.current.text,
-                      textDecoration = if (event.isCompleted) androidx.compose.ui.text.style.TextDecoration.LineThrough else null
-                    ),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
-                  )
-                  Spacer(modifier = Modifier.width(6.dp))
-                  PlannerCheckbox(
-                    checked = event.isCompleted,
-                    onCheckedChange = { isChecked ->
-                      onUpdateState { currentState ->
-                        currentState.copy(
-                          dailyEvents = currentState.dailyEvents.map {
-                            if (it.id == event.id) it.copy(isCompleted = isChecked) else it
-                          }
-                        )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                      text = event.title,
+                      style = Typography.bodyMedium.copy(
+                        color = if (event.isCompleted) GrayText else LocalCustomColors.current.text,
+                        textDecoration = if (event.isCompleted) androidx.compose.ui.text.style.TextDecoration.LineThrough else null
+                      ),
+                      maxLines = 1,
+                      overflow = TextOverflow.Ellipsis,
+                      modifier = Modifier.weight(1f)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    PlannerCheckbox(
+                      checked = event.isCompleted,
+                      onCheckedChange = { isChecked ->
+                        onUpdateState { currentState ->
+                          currentState.copy(
+                            dailyEvents = currentState.dailyEvents.map {
+                              if (it.id == event.id) it.copy(isCompleted = isChecked) else it
+                            }
+                          )
+                        }
                       }
-                    }
-                  )
+                    )
+                  }
                 }
+              }
+            } else {
+              Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+              ) {
+                Text(
+                  text = "No hay eventos en el horario.",
+                  style = Typography.bodyMedium.copy(color = GrayText)
+                )
               }
             }
           }
@@ -403,17 +460,6 @@ fun DashboardScreen(
             // Statistics values
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
               Column {
-                Text(text = "Ahorro Meta", style = Typography.bodyMedium.copy(color = GrayText))
-                Text(
-                  text = "$${savingsAchieved.toInt()} / $${savingsGoal.toInt()}",
-                  fontFamily = DataFontFamily,
-                  fontSize = 14.sp,
-                  fontWeight = FontWeight.Bold,
-                  color = LocalCustomColors.current.text
-                )
-              }
-              
-              Column(horizontalAlignment = Alignment.End) {
                 Text(text = "Suscripciones", style = Typography.bodyMedium.copy(color = GrayText))
                 Text(
                   text = String.format(java.util.Locale.US, "$%.2f/mes", subscriptionsSum),

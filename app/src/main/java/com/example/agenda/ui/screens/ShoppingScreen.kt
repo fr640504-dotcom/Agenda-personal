@@ -52,13 +52,7 @@ fun ShoppingScreen(
     title = "Lista de Compras",
     subtitle = "$completedItems de $totalItems artículos marcados",
     bannerPath = state.customBannerPath,
-    coverPath = state.customCoverPath,
-    onUpdateBannerPath = { path ->
-      onUpdateState { it.copy(customBannerPath = path) }
-    },
-    onUpdateCoverPath = { path ->
-      onUpdateState { it.copy(customCoverPath = path) }
-    }
+    coverPath = state.customCoverPath
   ) {
     // Clear completed button at the top right
     Row(
